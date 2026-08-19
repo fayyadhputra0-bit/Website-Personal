@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUDOKU GARDEN - ULTIMATE CHALLENGE</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --panel-bg: #ffffff;
+            --cell-bg: #ffffff;
+            --cell-fixed: #edf2f7;
+            --text-main: #2d3748;
+            --text-muted: #718096;
+            --accent-green: #48bb78;
+            --accent-green-dark: #2f855a;
+            --accent-blue: #4299e1;
+            --accent-gold: #d69e2e;
+            --accent-red: #e53e3e;
+            
+            /* HIGHLIGHT WARNA SMOKE TIPIS */
+            --cell-highlight: rgba(240, 243, 246, 0.85);
+            --cell-selected: rgba(226, 232, 240, 0.95);
+            --cell-same-val: rgba(203, 213, 225, 0.6);
+            
+            --border-bold: #4a5568;
+            --border-light: #cbd5e0;
+            --shadow-soft: 0 15px 35px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(135deg, #e6fffa 0%, #ebf8ff 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px 10px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* DEKORASI BACKGROUND */
+        .plant-side {
+            position: fixed; top: 50%; transform: translateY(-50%);
+            font-size: 160px; color: rgba(72, 187, 120, 0.12);
+            pointer-events: none; z-index: 0; display: flex; flex-direction: column; gap: 40px;
+        }
+        .plant-left { left: -30px; }
+        .plant-right { right: -30px; }
+
+        /* LOBBY GAME */
+        .lobby-card {
+            width: 100%; max-width: 480px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 32px 24px; border-radius: 24px;
+            box-shadow: var(--shadow-soft);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            text-align: center; position: relative; z-index: 10;
+            display: flex; flex-direction: column; gap: 16px;
+        }
+
+        .lobby-title {
+            font-size: 30px; font-weight: 900; color: var(--accent-green-dark);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+
+        .user-profile-badge {
+            background: #fff; padding: 12px 18px; border-radius: 16px;
+            border: 2px solid var(--accent-green); display: flex;
+            justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .coin-display {
+            font-size: 18px; font-weight: 800; color: var(--accent-gold);
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        .title-display {
+            font-size: 13px; font-weight: 700;
+            background: rgba(66, 153, 225, 0.15); color: var(--accent-blue);
+            padding: 4px 10px; border-radius: 20px;
+        }
+
+        .menu-btns { display: flex; flex-direction: column; gap: 10px; }
+
+        .btn-lobby {
+            padding: 14px; border-radius: 14px; font-size: 15px; font-weight: 800;
+            cursor: pointer; border: none; display: flex; align-items: center;
+            justify-content: center; gap: 10px; transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .btn-play { background: linear-gradient(135deg, var(--accent-green), var(--accent-green-dark)); color: white; }
+        .btn-shop { background: linear-gradient(135deg, #ecc94b, #d69e2e); color: white; }
+        .btn-stats { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; }
+        .btn-lobby:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.12); }
+
+        /* CONTAINER GAME */
+        .container {
+            width: 100%; max-width: 520px; display: none;
+            flex-direction: column; gap: 16px; position: relative; z-index: 1;
+            background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(8px);
+            padding: 24px; border-radius: 20px; box-shadow: var(--shadow-soft);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        header { display: flex; justify-content: space-between; align-items: center; }
+
+        .status-bar {
+            background: var(--panel-bg); padding: 12px 20px; border-radius: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 14px; font-weight: 700; color: var(--text-muted);
+            border: 1px solid var(--border-light);
+        }
+
+        /* PAPAN SUDOKU & HIGHLIGHT SMOKE */
+        .board-wrapper { position: relative; width: 100%; padding-top: 100%; }
+
+        .board {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            display: grid; grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(9, 1fr);
+            border: 3px solid var(--border-bold); border-radius: 12px; overflow: hidden;
+            background: var(--border-bold); gap: 1px;
+        }
+
+        .cell {
+            background-color: var(--cell-bg); display: flex; justify-content: center;
+            align-items: center; font-size: 22px; font-weight: 700; cursor: pointer;
+            transition: background-color 0.2s ease; position: relative; color: var(--accent-green-dark);
+        }
+
+        .cell:nth-child(3n) { border-right: 2px solid var(--border-bold); }
+        .cell:nth-child(9n) { border-right: none; }
+        .cell:nth-child(n+19):nth-child(-n+27),
+        .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--border-bold); }
+
+        .cell.fixed { background-color: var(--cell-fixed); color: var(--text-main); }
+        .cell.highlight { background-color: var(--cell-highlight) !important; }
+        .cell.same-val { background-color: var(--cell-same-val) !important; }
+        .cell.selected { background-color: var(--cell-selected) !important; border: 2px solid #a0aec0; }
+
+        /* EFEK GOYANG & KEMBANG API */
+        .cell.correct-anim {
+            animation: festiveBounce 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+            background-color: #d1fae5 !important; z-index: 10;
+        }
+
+        @keyframes festiveBounce {
+            0% { transform: scale(1) rotate(0deg); }
+            15% { transform: scale(1.25) rotate(-12deg); }
+            30% { transform: scale(1.25) rotate(12deg); }
+            45% { transform: scale(1.15) rotate(-6deg); }
+            60% { transform: scale(1.15) rotate(6deg); }
+            75% { transform: scale(1.05) rotate(-2deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        .firework-particle {
+            position: absolute; border-radius: 50%; pointer-events: none; z-index: 99;
+            animation: fireworksExplode 0.7s ease-out forwards;
+        }
+
+        @keyframes fireworksExplode {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+        }
+
+        .coin-popup {
+            position: absolute; color: #d69e2e; font-size: 18px; font-weight: 900;
+            pointer-events: none; z-index: 100; animation: popupFloat 0.8s ease-out forwards;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+
+        @keyframes popupFloat {
+            0% { opacity: 0; transform: translateY(0) scale(0.5); }
+            30% { opacity: 1; transform: translateY(-15px) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-35px) scale(1); }
+        }
+
+        /* NUMPAD */
+        .action-btns { display: flex; gap: 8px; }
+        .btn-action {
+            flex: 1; background: var(--panel-bg); border: 1px solid var(--border-light);
+            padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+        .btn-action.active { background: var(--accent-green); color: #fff; }
+
+        .numpad { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
+        .btn-num {
+            background: var(--panel-bg); border: 1px solid var(--border-light); color: var(--accent-green-dark);
+            font-size: 20px; font-weight: 800; padding: 12px 0; border-radius: 10px; cursor: pointer;
+        }
+
+        /* MODAL OVERLAY */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);
+            display: flex; justify-content: center; align-items: center; z-index: 100;
+            opacity: 0; pointer-events: none; transition: 0.25s ease;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-card {
+            background: #ffffff; width: 90%; max-width: 440px; padding: 24px;
+            border-radius: 20px; border: 2px solid var(--accent-green); position: relative;
+        }
+
+        .shop-items { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; max-height: 320px; overflow-y: auto; }
+        .shop-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px; border: 1px solid var(--border-light); border-radius: 12px;
+        }
+        .btn-buy {
+            background: var(--accent-green); color: white; border: none; padding: 6px 14px;
+            border-radius: 8px; font-weight: 700; cursor: pointer;
+        }
+        .btn-buy.owned { background: var(--border-light); color: var(--text-muted); cursor: default; }
+
+        .modal-punishment { border-color: var(--accent-red) !important; text-align: center; }
+        .timer-bar-container { width: 100%; height: 8px; background: #edf2f7; border-radius: 4px; margin: 12px 0; }
+        .timer-bar { width: 100%; height: 100%; background: var(--accent-red); transition: width 0.1s linear; }
+
+        /* GRID KOLEKSI PIALA (STATISTIK) */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; text-align: center;
+        }
+        .stat-box { background: #f7fafc; padding: 10px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .stat-num { font-size: 20px; font-weight: 900; color: var(--accent-blue); }
+        .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 700; }
+
+        .trophy-shelf {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 180px; overflow-y: auto;
+            margin-top: 10px; padding: 10px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;
+        }
+        .trophy-card {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 10px; background: white; border-radius: 10px; border: 1px solid #cbd5e0; text-align: center;
+        }
+        .trophy-card i { font-size: 24px; margin-bottom: 4px; color: var(--accent-gold); }
+        .trophy-card span { font-size: 10px; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<div class="plant-side plant-left"><i class="fa-solid fa-seedling"></i><i class="fa-solid fa-leaf"></i></div>
+<div class="plant-side plant-right"><i class="fa-solid fa-leaf"></i><i class="fa-solid fa-tree"></i></div>
+
+<!-- LOBBY SCREEN -->
+<div class="lobby-card" id="lobby-screen">
+    <div class="lobby-title">
+        <i class="fa-solid fa-clover"></i> SUDOKU GARDEN
+    </div>
+    
+    <div class="user-profile-badge">
+        <div class="coin-display">
+            <i class="fa-solid fa-coins"></i> <span id="lobby-coins">0</span> Koin
+        </div>
+        <div class="title-display" id="lobby-title-tag">Pemula</div>
+    </div>
+
+    <div style="text-align: left;">
+        <label style="font-size: 13px; font-weight: 700; color: var(--text-muted);">PILIH TINGKAT KESULITAN:</label>
+        <select id="difficulty" style="width: 100%; padding: 12px; margin-top: 6px; border-radius: 12px; border: 2px solid var(--accent-green); font-weight: 700;">
+            <option value="easy">Mudah</option>
+            <option value="medium" selected>Sedang</option>
+            <option value="hard">Sulit</option>
+        </select>
+    </div>
+
+    <div class="menu-btns">
+        <button class="btn-lobby btn-play" onclick="enterGame()">
+            <i class="fa-solid fa-play"></i> MULAI PERMAINAN
+        </button>
+        <button class="btn-lobby btn-shop" onclick="openShop()">
+            <i class="fa-solid fa-store"></i> TOKO PIALA MEWAH
+        </button>
+        <button class="btn-lobby btn-stats" onclick="openStats()">
+            <i class="fa-solid fa-chart-pie"></i> STATISTIK & KOLEKSI
+        </button>
+    </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div class="container" id="game-screen">
+    <header>
+        <button class="btn-action" onclick="returnToLobby()" style="flex: none; padding: 8px 14px;">
+            <i class="fa-solid fa-house"></i> Lobby
+        </button>
+        <div class="coin-display" style="font-size: 16px;">
+            <i class="fa-solid fa-coins"></i> <span id="game-coins">0</span>
+        </div>
+    </header>
+
+    <div class="status-bar">
+        <div><i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-red);"></i> Mode: Sekali Salah Kalah!</div>
+        <div><i class="fa-regular fa-clock" style="color: var(--accent-green-dark);"></i> <span id="timer">00:00</span></div>
+    </div>
+
+    <div class="board-wrapper">
+        <div class="board" id="board"></div>
+    </div>
+
+    <div class="action-btns">
+        <button class="btn-action" onclick="eraseCell()"><i class="fa-solid fa-eraser"></i> Hapus</button>
+        <button class="btn-action" id="notes-btn" onclick="toggleNotes()"><i class="fa-solid fa-pencil"></i> Catatan</button>
+        <button class="btn-action" onclick="giveHint()"><i class="fa-regular fa-lightbulb"></i> Bantuan</button>
+    </div>
+
+    <div class="numpad">
+        <button class="btn-num" onclick="inputNumber(1)">1</button>
+        <button class="btn-num" onclick="inputNumber(2)">2</button>
+        <button class="btn-num" onclick="inputNumber(3)">3</button>
+        <button class="btn-num" onclick="inputNumber(4)">4</button>
+        <button class="btn-num" onclick="inputNumber(5)">5</button>
+        <button class="btn-num" onclick="inputNumber(6)">6</button>
+        <button class="btn-num" onclick="inputNumber(7)">7</button>
+        <button class="btn-num" onclick="inputNumber(8)">8</button>
+        <button class="btn-num" onclick="inputNumber(9)">9</button>
+    </div>
+</div>
+
+<!-- MODAL PERTANYAAN BENAR -->
+<div class="modal-overlay" id="question-modal">
+    <div class="modal-card" style="text-align: center; border-color: var(--accent-blue);">
+        <h3 style="color: var(--accent-blue);"><i class="fa-solid fa-brain"></i> TANTANGAN LOGIKA!</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Angka tebakan benar! Jawab pertanyaan ini agar bisa memasang angka. Jika salah, Anda <b>KALAH</b>!</p>
+        <div style="font-size: 20px; font-weight: 800; margin: 16px 0;" id="quiz-question">...</div>
+        <div style="display: flex; gap: 8px;">
+            <input type="number" id="quiz-answer" style="flex:1; text-align:center; font-size: 18px; font-weight:700; border:2px solid var(--accent-blue); border-radius:8px;" placeholder="Jawaban" autofocus />
+            <button onclick="checkQuizAnswer()" style="background: var(--accent-blue); color: white; border:none; padding: 0 16px; border-radius:8px; font-weight:700;">JAWAB</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL HUKUMAN PERKALIAN -->
+<div class="modal-overlay" id="punish-modal">
+    <div class="modal-card modal-punishment">
+        <h3 style="color: var(--accent-red);"><i class="fa-solid fa-skull-crossbones"></i> SALAH TEBAK! HUKUMAN</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Tebakan salah! Jawab dalam &lt; 4 detik atau Anda <b>KALAH GAME OVER</b>!</p>
+        <div class="timer-bar-container"><div class="timer-bar" id="punish-timer-bar"></div></div>
+        <div style="font-size: 32px; font-weight: 900; margin-bottom: 12px;" id="punish-question">7 x 8</div>
+        <div style="display: flex; gap: 8px;">
+            <input type="number" id="punish-answer" style="flex:1; text-align:center; font-size: 20px; font-weight:700; border:2px solid var(--accent-red); border-radius:8px;" autofocus />
+            <button onclick="checkPunishmentAnswer()" style="background: var(--accent-red); color: white; border:none; padding: 0 16px; border-radius:8px; font-weight:700;">KIRIM</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL STATISTIK & KOLEKSI -->
+<div class="modal-overlay" id="stats-modal">
+    <div class="modal-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3><i class="fa-solid fa-chart-column" style="color: var(--accent-blue);"></i> Statistik & Koleksi</h3>
+            <button onclick="closeModal('stats-modal')" style="border:none; background:none; font-size: 18px; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-box"><div class="stat-num" id="stat-played">0</div><div class="stat-label">Dimainkan</div></div>
+            <div class="stat-box"><div class="stat-num" style="color: var(--accent-green);" id="stat-wins">0</div><div class="stat-label">Menang</div></div>
+            <div class="stat-box"><div class="stat-num" style="color: var(--accent-red);" id="stat-losses">0</div><div class="stat-label">Kalah/Salah</div></div>
+        </div>
+        <h4 style="font-size: 14px; margin-top: 10px; color: var(--text-main);"><i class="fa-solid fa-trophy" style="color: var(--accent-gold);"></i> Koleksi Piala Anda</h4>
+        <div class="trophy-shelf" id="trophy-shelf-container"></div>
+    </div>
+</div>
+
+<!-- MODAL TOKO -->
+<div class="modal-overlay" id="shop-modal">
+    <div class="modal-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3><i class="fa-solid fa-store" style="color: var(--accent-gold);"></i> Toko Piala Mewah</h3>
+            <button onclick="closeModal('shop-modal')" style="border:none; background:none; font-size: 18px; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="shop-items" id="shop-items-container"></div>
+    </div>
+</div>
+
+<script>
+    /* State Game & Statistik */
+    let coins = 0;
+    let activeTitle = "Pemula";
+    let stats = { played: 0, wins: 0, losses: 0 };
+
+    /* Data Toko (Piala Beragam & Lebih Mahal Kisaran 1000 Koin) */
+    const shopData = [
+        { id: 't1', name: 'Master Sudoku', type: 'title', price: 50 },
+        { id: 't2', name: 'Raja Logika', type: 'title', price: 150 },
+        { id: 'p1', name: 'Piala Perunggu', type: 'trophy', price: 30, icon: 'fa-trophy', color: '#cd7f32' },
+        { id: 'p2', name: 'Piala Perak', type: 'trophy', price: 150, icon: 'fa-trophy', color: '#c0c0c0' },
+        { id: 'p3', name: 'Piala Emas', type: 'trophy', price: 300, icon: 'fa-trophy', color: '#ffd700' },
+        { id: 'p4', name: 'Piala Berlian', type: 'trophy', price: 600, icon: 'fa-gem', color: '#38bdf8' },
+        { id: 'p5', name: 'Piala Mahkota Legendaris', type: 'trophy', price: 1200, icon: 'fa-crown', color: '#f43f5e' }
+    ];
+    let inventory = [];
+
+    /* State Sudoku */
+    let solutionBoard = [], initialBoard = [], currentBoard = [];
+    let notesBoard = Array.from({ length: 81 }, () => new Set());
+    let selectedCellIndex = null, isNotesMode = false;
+    let timerInterval = null, secondsElapsed = 0;
+
+    /* Temp Input & Pertanyaan */
+    let pendingNumInput = null;
+    let quizCorrectAnswer = 0;
+
+    /* State Hukuman Perkalian */
+    let punishCorrectAnswer = 0, punishTimerInterval = null, punishTimeLeft = 4.0;
+
+    function updateUI() {
+        document.getElementById('lobby-coins').innerText = coins;
+        document.getElementById('game-coins').innerText = coins;
+        document.getElementById('lobby-title-tag').innerText = activeTitle;
+    }
+
+    function enterGame() {
+        stats.played++;
+        document.getElementById('lobby-screen').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'flex';
+        startNewGame();
+    }
+
+    function returnToLobby() {
+        clearInterval(timerInterval);
+        document.getElementById('game-screen').style.display = 'none';
+        document.getElementById('lobby-screen').style.display = 'flex';
+        updateUI();
+    }
+
+    function triggerGameOver(reason) {
+        clearInterval(timerInterval);
+        clearInterval(punishTimerInterval);
+        closeModal('question-modal');
+        closeModal('punish-modal');
+        stats.losses++;
+        alert(`GAME OVER!\n${reason}\nAnda harus mengulang permainan dari awal.`);
+        returnToLobby();
+    }
+
+    /* Generator Sudoku Sederhana */
+    function generateSudoku(difficulty) {
+        const board = Array(81).fill(0);
+        function isValid(b, row, col, num) {
+            for (let i = 0; i < 9; i++) {
+                if (b[row * 9 + i] === num || b[i * 9 + col] === num) return false;
+                let boxRow = 3 * Math.floor(row / 3) + Math.floor(i / 3);
+                let boxCol = 3 * Math.floor(col / 3) + (i % 3);
+                if (b[boxRow * 9 + boxCol] === num) return false;
+            }
+            return true;
+        }
+        function solve(b) {
+            for (let i = 0; i < 81; i++) {
+                if (b[i] === 0) {
+                    let nums = [1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
+                    for (let num of nums) {
+                        if (isValid(b, Math.floor(i / 9), i % 9, num)) {
+                            b[i] = num;
+                            if (solve(b)) return true;
+                            b[i] = 0;
+                        }
+                    }
+                    return false;
+                }
+            }
+            return true;
+        }
+        solve(board);
+        solutionBoard = [...board];
+        let holes = difficulty === 'easy' ? 25 : difficulty === 'medium' ? 38 : 50;
+        let puzzle = [...board];
+        while (holes > 0) {
+            let idx = Math.floor(Math.random() * 81);
+            if (puzzle[idx] !== 0) { puzzle[idx] = 0; holes--; }
+        }
+        initialBoard = [...puzzle];
+        currentBoard = [...puzzle];
+        notesBoard = Array.from({ length: 81 }, () => new Set());
+    }
+
+    function renderBoard() {
+        const boardEl = document.getElementById('board');
+        boardEl.innerHTML = '';
+        for (let i = 0; i < 81; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.index = i;
+            const val = currentBoard[i];
+
+            if (initialBoard[i] !== 0) {
+                cell.classList.add('fixed');
+                cell.innerText = val;
+            } else if (val !== 0) {
+                cell.innerText = val;
+            } else if (notesBoard[i].size > 0) {
+                const notesGrid = document.createElement('div');
+                notesGrid.className = 'notes-grid';
+                for (let n = 1; n <= 9; n++) {
+                    const noteNum = document.createElement('div');
+                    noteNum.className = 'note-num';
+                    noteNum.innerText = notesBoard[i].has(n) ? n : '';
+                    notesGrid.appendChild(noteNum);
+                }
+                cell.appendChild(notesGrid);
+            }
+            cell.addEventListener('click', () => selectCell(i));
+            boardEl.appendChild(cell);
+        }
+        highlightCells();
+    }
+
+    /* Highlight Smoke Tipis */
+    function highlightCells() {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(c => c.classList.remove('selected', 'highlight', 'same-val'));
+        if (selectedCellIndex === null) return;
+        const selRow = Math.floor(selectedCellIndex / 9), selCol = selectedCellIndex % 9, selVal = currentBoard[selectedCellIndex];
+        cells.forEach((cell, i) => {
+            const r = Math.floor(i / 9), c = i % 9;
+            const sameBox = Math.floor(r / 3) === Math.floor(selRow / 3) && Math.floor(c / 3) === Math.floor(selCol / 3);
+            if (i === selectedCellIndex) cell.classList.add('selected');
+            else if (r === selRow || c === selCol || sameBox) cell.classList.add('highlight');
+            if (selVal !== 0 && currentBoard[i] === selVal) cell.classList.add('same-val');
+        });
+    }
+
+    function selectCell(index) { selectedCellIndex = index; highlightCells(); }
+
+    /* Input Angka & Logika Pertanyaan */
+    function inputNumber(num) {
+        if (selectedCellIndex === null || initialBoard[selectedCellIndex] !== 0) return;
+
+        if (isNotesMode) {
+            currentBoard[selectedCellIndex] = 0;
+            if (notesBoard[selectedCellIndex].has(num)) notesBoard[selectedCellIndex].delete(num);
+            else notesBoard[selectedCellIndex].add(num);
+            renderBoard();
+        } else {
+            notesBoard[selectedCellIndex].clear();
+            if (currentBoard[selectedCellIndex] === num) {
+                currentBoard[selectedCellIndex] = 0;
+                renderBoard();
+            } else {
+                if (num === solutionBoard[selectedCellIndex]) {
+                    // TEBAKAN LOKASI BENAR: Buka Tantangan Pertanyaan
+                    pendingNumInput = num;
+                    openQuizModal();
+                } else {
+                    // TEBAKAN SALAH: Masuk Hukuman Perkalian
+                    triggerPunishmentModal();
+                }
+            }
+        }
+    }
+
+    /* MODAL PERTANYAAN BENAR */
+    function openQuizModal() {
+        const modal = document.getElementById('question-modal');
+        const a = Math.floor(Math.random() * 20) + 5;
+        const b = Math.floor(Math.random() * 20) + 5;
+        quizCorrectAnswer = a + b;
+
+        document.getElementById('quiz-question').innerText = `Berapa hasil dari ${a} + ${b} ?`;
+        const input = document.getElementById('quiz-answer');
+        input.value = '';
+        modal.classList.add('active');
+        setTimeout(() => input.focus(), 100);
+    }
+
+    function checkQuizAnswer() {
+        const val = parseInt(document.getElementById('quiz-answer').value);
+        closeModal('question-modal');
+        if (val === quizCorrectAnswer) {
+            // BERHASIL JAWAB: Angka Dipasang, dapat +2 Koin & Efek Meriah
+            currentBoard[selectedCellIndex] = pendingNumInput;
+            coins += 2;
+            updateUI();
+            renderBoard();
+            triggerFestiveSuccess(selectedCellIndex);
+            checkWinCondition();
+        } else {
+            // GAGAL JAWAB PERTANYAAN = GAME OVER
+            triggerGameOver('Jawaban pertanyaan tantangan Anda SALAH!');
+        }
+    }
+
+    /* MODAL HUKUMAN PERKALIAN */
+    function triggerPunishmentModal() {
+        const modal = document.getElementById('punish-modal');
+        const num1 = Math.floor(Math.random() * 8) + 3;
+        const num2 = Math.floor(Math.random() * 8) + 3;
+        punishCorrectAnswer = num1 * num2;
+
+        document.getElementById('punish-question').innerText = `${num1} x ${num2}`;
+        const input = document.getElementById('punish-answer');
+        input.value = '';
+        modal.classList.add('active');
+        setTimeout(() => input.focus(), 100);
+
+        clearInterval(punishTimerInterval);
+        punishTimeLeft = 4.0;
+        const timerBar = document.getElementById('punish-timer-bar');
+        timerBar.style.width = '100%';
+
+        punishTimerInterval = setInterval(() => {
+            punishTimeLeft -= 0.05;
+            timerBar.style.width = `${Math.max(0, (punishTimeLeft / 4.0) * 100)}%`;
+            if (punishTimeLeft <= 0) {
+                clearInterval(punishTimerInterval);
+                triggerGameOver('Waktu hukuman perkalian HABIS!');
+            }
+        }, 50);
+    }
+
+    function checkPunishmentAnswer() {
+        const val = parseInt(document.getElementById('punish-answer').value);
+        clearInterval(punishTimerInterval);
+        closeModal('punish-modal');
+        if (val !== punishCorrectAnswer) {
+            // GAGAL JAWAB PERKALIAN = GAME OVER
+            triggerGameOver('Jawaban hukuman perkalian SALAH!');
+        } else {
+            alert('Selamat! Hukuman berhasil dilewati, tetapi angka tebakan Anda tadi tetap salah.');
+            stats.losses++;
+        }
+    }
+
+    /* EFEK MERIAH & KEMBANG API */
+    function triggerFestiveSuccess(cellIdx) {
+        const cellEl = document.querySelector(`.cell[data-index='${cellIdx}']`);
+        if (!cellEl) return;
+
+        cellEl.classList.add('correct-anim');
+        setTimeout(() => cellEl.classList.remove('correct-anim'), 600);
+
+        const popup = document.createElement('div');
+        popup.className = 'coin-popup';
+        popup.innerText = '+2 🪙';
+        cellEl.appendChild(popup);
+        setTimeout(() => popup.remove(), 800);
+
+        const colors = ['#f6e05e', '#48bb78', '#4299e1', '#ed64a6', '#9f7aea', '#38bdf8', '#f43f5e'];
+        for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'firework-particle';
+            const pSize = Math.random() * 6 + 4;
+            particle.style.width = `${pSize}px`; particle.style.height = `${pSize}px`;
+            particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            const angle = Math.random() * Math.PI * 2, dist = 35 + Math.random() * 45;
+            particle.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+            particle.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+            cellEl.appendChild(particle);
+            setTimeout(() => particle.remove(), 700);
+        }
+    }
+
+    function eraseCell() {
+        if (selectedCellIndex === null || initialBoard[selectedCellIndex] !== 0) return;
+        currentBoard[selectedCellIndex] = 0;
+        notesBoard[selectedCellIndex].clear();
+        renderBoard();
+    }
+
+    function toggleNotes() {
+        isNotesMode = !isNotesMode;
+        document.getElementById('notes-btn').classList.toggle('active', isNotesMode);
+    }
+
+    function giveHint() {
+        if (selectedCellIndex === null || initialBoard[selectedCellIndex] !== 0) return;
+        currentBoard[selectedCellIndex] = solutionBoard[selectedCellIndex];
+        notesBoard[selectedCellIndex].clear();
+        coins += 2;
+        updateUI();
+        triggerFestiveSuccess(selectedCellIndex);
+        renderBoard();
+        checkWinCondition();
+    }
+
+    function checkWinCondition() {
+        if (currentBoard.includes(0)) return;
+        for (let i = 0; i < 81; i++) {
+            if (currentBoard[i] !== solutionBoard[i]) return;
+        }
+        clearInterval(timerInterval);
+        
+        // BONUS MENANG: 50 KOIN
+        coins += 50;
+        stats.wins++;
+        updateUI();
+        setTimeout(() => {
+            alert(`SELAMAT! Anda menyelesaikan Sudoku Garden!\nAnda mendapatkan Bonus Kemenangan +50 KOIN! 🪙`);
+            returnToLobby();
+        }, 200);
+    }
+
+    /* STATISTIK & KOLEKSI PIALA */
+    function openStats() {
+        document.getElementById('stat-played').innerText = stats.played;
+        document.getElementById('stat-wins').innerText = stats.wins;
+        document.getElementById('stat-losses').innerText = stats.losses;
+
+        const shelf = document.getElementById('trophy-shelf-container');
+        shelf.innerHTML = '';
+
+        const ownedTrophies = shopData.filter(i => i.type === 'trophy' && inventory.includes(i.id));
+
+        if (ownedTrophies.length === 0) {
+            shelf.innerHTML = `<div style="grid-column: 1 / -1; font-size: 12px; color: var(--text-muted);">Belum ada piala yang dimiliki. Beli di Toko!</div>`;
+        } else {
+            ownedTrophies.forEach(t => {
+                const card = document.createElement('div');
+                card.className = 'trophy-card';
+                card.innerHTML = `<i class="fa-solid ${t.icon}" style="color: ${t.color};"></i><span>${t.name}</span>`;
+                shelf.appendChild(card);
+            });
+        }
+
+        document.getElementById('stats-modal').classList.add('active');
+    }
+
+    /* TOKO MEWAH */
+    function openShop() {
+        const container = document.getElementById('shop-items-container');
+        container.innerHTML = '';
+        shopData.forEach(item => {
+            const isOwned = inventory.includes(item.id);
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.innerHTML = `
+                <div>
+                    <div style="font-weight: 700; display:flex; align-items:center; gap:6px;">
+                        ${item.icon ? `<i class="fa-solid ${item.icon}" style="color:${item.color}"></i>` : ''}
+                        ${item.name}
+                    </div>
+                    <div style="font-size: 12px; color: var(--accent-gold);"><i class="fa-solid fa-coins"></i> ${item.price} Koin</div>
+                </div>
+                <button class="btn-buy ${isOwned ? 'owned' : ''}" onclick="buyItem('${item.id}')">
+                    ${isOwned ? 'Milik Anda' : 'Beli'}
+                </button>
+            `;
+            container.appendChild(div);
+        });
+        document.getElementById('shop-modal').classList.add('active');
+    }
+
+    function buyItem(itemId) {
+        if (inventory.includes(itemId)) return;
+        const item = shopData.find(i => i.id === itemId);
+        if (coins >= item.price) {
+            coins -= item.price;
+            inventory.push(itemId);
+            if (item.type === 'title') activeTitle = item.name;
+            updateUI();
+            openShop();
+        } else {
+            alert('Koin Anda tidak cukup!');
+        }
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        secondsElapsed = 0;
+        timerInterval = setInterval(() => {
+            secondsElapsed++;
+            let mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+            let secs = String(secondsElapsed % 60).padStart(2, '0');
+            document.getElementById('timer').innerText = `${mins}:${secs}`;
+        }, 1000);
+    }
+
+    function startNewGame() {
+        selectedCellIndex = null;
+        generateSudoku(document.getElementById('difficulty').value);
+        renderBoard();
+        startTimer();
+    }
+
+    /* Keyboard Controller */
+    document.addEventListener('keydown', (e) => {
+        if (document.getElementById('question-modal').classList.contains('active') || 
+            document.getElementById('punish-modal').classList.contains('active')) return;
+        if (selectedCellIndex === null) return;
+        let r = Math.floor(selectedCellIndex / 9), c = selectedCellIndex % 9;
+        if (e.key >= '1' && e.key <= '9') inputNumber(parseInt(e.key));
+        else if (e.key === 'Backspace' || e.key === 'Delete') eraseCell();
+        else if (e.key === 'ArrowUp' && r > 0) selectCell((r - 1) * 9 + c);
+        else if (e.key === 'ArrowDown' && r < 8) selectCell((r + 1) * 9 + c);
+        else if (e.key === 'ArrowLeft' && c > 0) selectCell(r * 9 + (c - 1));
+        else if (e.key === 'ArrowRight' && c < 8) selectCell(r * 9 + (c + 1));
+    });
+
+    document.getElementById('quiz-answer').addEventListener('keypress', (e) => { if (e.key === 'Enter') checkQuizAnswer(); });
+    document.getElementById('punish-answer').addEventListener('keypress', (e) => { if (e.key === 'Enter') checkPunishmentAnswer(); });
+
+    window.onload = updateUI;
+</script>
+</body>
+</html>
